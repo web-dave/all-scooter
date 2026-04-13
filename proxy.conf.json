@@ -1,0 +1,11 @@
+{
+  "/limeapi/**": {
+    "target": "https://data.lime.bike/api/partners/v1/gbfs",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/limeapi": ""
+    },
+    "logLevel": "debug"
+  }
+}
