@@ -1,14 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 import {
-  MapAdvancedMarker,
   MapMarker,
   MapMarkerClusterer,
-  MapInfoWindow,
   GoogleMap,
-  MarkerClustererOptions,
 } from '@angular/google-maps';
-import { BikeService } from './scooter.service';
+import { Bike, BikeService } from './scooter.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -25,4 +21,14 @@ export class App {
   };
   bikes$ = this.service.getAllBikes('hamburg');
   bikes = toSignal(this.bikes$);
+
+  markerIcon(bike: Bike) {
+    return {
+      url: `${bike.tenant.toLowerCase()}-${bike.vehicle_type}.svg`,
+      scaledSize: {
+        width: 20,
+        height: 30
+      } as google.maps.Size
+    }
+  }
 }
