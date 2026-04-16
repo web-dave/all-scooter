@@ -13,7 +13,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-root',
-  imports: [GoogleMap, MapMarkerClusterer, MapMarker],
+  imports: [GoogleMap, MapMarkerClusterer, MapAdvancedMarker],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

@@ -1,12 +1,7 @@
 <google-map height="400px" width="750px" mapId="scooterMap" [zoom]="12" [center]="center">
   <map-marker-clusterer>
     @for (bike of bikes(); track $index) {
-      <map-marker [position]="bike.latLng" />
+      <map-advanced-marker [position]="bike.latLng" />
     }
   </map-marker-clusterer>
 </google-map>
-<!-- <ol>
-  @for (bike of bikes(); track $index) {
-    <li>{{ bike.bike_id }} {{ bike.vehicle_type }}</li>
-  }
-</ol> -->
