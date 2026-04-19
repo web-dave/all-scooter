@@ -1,19 +1,17 @@
-import { Component, inject, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import {
-  MapAdvancedMarker,
   MapMarker,
   MapMarkerClusterer,
   MapInfoWindow,
   GoogleMap,
-  MarkerClustererOptions,
 } from '@angular/google-maps';
-import { BikeService } from './scooter.service';
+import { Bike, BikeService } from './scooter.service';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { JsonPipe } from '@angular/common';
 
 @Component({
   selector: 'app-root',
-  imports: [GoogleMap, MapMarkerClusterer, MapMarker],
+  imports: [JsonPipe, GoogleMap, MapMarkerClusterer, MapMarker, MapInfoWindow],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -25,4 +23,11 @@ export class App {
   };
   bikes$ = this.service.getAllBikes('hamburg');
   bikes = toSignal(this.bikes$);
+  infoWindow = viewChild.required(MapInfoWindow);
+  selectedBike = signal<Bike | null>(null);
+
+  openInfo(marker: MapMarker, bike: Bike) {
+    this.selectedBike.set(bike);
+    this.infoWindow().open(marker);
+  }
 }

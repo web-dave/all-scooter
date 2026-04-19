@@ -1,9 +1,16 @@
 <google-map height="400px" width="750px" mapId="scooterMap" [zoom]="12" [center]="center">
   <map-marker-clusterer>
     @for (bike of bikes(); track $index) {
-      <map-marker [position]="bike.latLng" />
+      <map-marker #marker="mapMarker" [position]="bike.latLng" (mapClick)="openInfo(marker, bike)" />
     }
   </map-marker-clusterer>
+  <map-info-window>
+    <div>
+      <pre>
+        {{ selectedBike() | json }}
+      </pre>
+    </div>
+  </map-info-window>
 </google-map>
 <!-- <ol>
   @for (bike of bikes(); track $index) {
