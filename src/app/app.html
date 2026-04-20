@@ -7,7 +7,7 @@
 
   <main class="map-layout">
     <section class="map-card" aria-label="Scooter map">
-      <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="12" [center]="center">
+      <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="12" [center]="center()">
         <map-marker-clusterer>
           @for (bike of bikes(); track bike.bike_id) {
             <map-advanced-marker [position]="bike.latLng" />
