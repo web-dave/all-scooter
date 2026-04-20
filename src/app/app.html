@@ -10,9 +10,16 @@
       <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="12" [center]="center()">
         <map-marker-clusterer>
           @for (bike of bikes(); track bike.bike_id) {
-            <map-marker [position]="bike.latLng" [icon]="markerIcon(bike)" />
+            <map-marker #marker="mapMarker" [position]="bike.latLng" [icon]="markerIcon(bike)" />
           }
         </map-marker-clusterer>
+        <map-info-window>
+    <div>
+      <pre>
+        {{ selectedBike() | json }}
+      </pre>
+    </div>
+  </map-info-window>
       </google-map>
     </section>
   </main>

@@ -1,12 +1,17 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { MapMarker, MapMarkerClusterer, GoogleMap } from '@angular/google-maps';
+import { Component, inject, signal, viewChild } from '@angular/core';
+import {
+  MapMarker,
+  MapMarkerClusterer,
+  MapInfoWindow,
+  GoogleMap,
+} from '@angular/google-maps';
 import { Bike, BikeService } from './scooter.service';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { switchMap } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { JsonPipe } from '@angular/common';
 
 @Component({
   selector: 'app-root',
-  imports: [GoogleMap, MapMarkerClusterer, MapMarker],
+  imports: [JsonPipe, GoogleMap, MapMarkerClusterer, MapMarker, MapInfoWindow],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -17,6 +22,13 @@ export class App {
     lat: 53.59840544367906,
     lng: 10.063711568459246,
   };
+  infoWindow = viewChild.required(MapInfoWindow);
+  selectedBike = signal<Bike | null>(null);
+
+  openInfo(marker: MapMarker, bike: Bike) {
+    this.selectedBike.set(bike);
+    this.infoWindow().open(marker);
+  }
 
   markerIcon(bike: Bike) {
     return {
