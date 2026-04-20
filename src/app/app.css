@@ -1,0 +1,103 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  color: #14213d;
+}
+
+.app-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at top, rgb(162 210 255 / 0.45), transparent 32%),
+    linear-gradient(180deg, #f7fbff 0%, #e6eef8 100%);
+}
+
+.menu-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgb(255 255 255 / 0.82);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgb(20 33 61 / 0.08);
+  box-shadow: 0 12px 30px rgb(20 33 61 / 0.08);
+}
+
+.menu-bar__title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menu-bar__reload {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1.1rem;
+  background: #14213d;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+
+.menu-bar__reload:hover,
+.menu-bar__reload:focus-visible {
+  background: #22345f;
+  box-shadow: 0 10px 24px rgb(20 33 61 / 0.2);
+}
+
+.menu-bar__reload:active {
+  transform: translateY(1px);
+}
+
+.map-layout {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.map-card {
+  width: min(100%, 70rem);
+  height: min(70dvh, 32rem);
+  min-height: 24rem;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  background: #dfe7f3;
+  box-shadow: 0 24px 60px rgb(31 45 61 / 0.16);
+}
+
+.map-card google-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (min-width: 768px) {
+  .menu-bar {
+    padding: 1rem 1.5rem;
+  }
+
+  .menu-bar__title {
+    font-size: 1.1rem;
+  }
+
+  .map-layout {
+    padding: 1.5rem;
+  }
+
+  .map-card {
+    height: min(72dvh, 40rem);
+  }
+}
