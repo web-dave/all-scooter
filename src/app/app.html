@@ -10,7 +10,7 @@
       <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="12" [center]="center()">
         <map-marker-clusterer>
           @for (bike of bikes(); track bike.bike_id) {
-            <map-advanced-marker [position]="bike.latLng"  [icon]="markerIcon(bike)"  />
+            <map-marker [position]="bike.latLng" [icon]="markerIcon(bike)" />
           }
         </map-marker-clusterer>
       </google-map>

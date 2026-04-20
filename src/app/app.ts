@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { MapAdvancedMarker, MapMarkerClusterer, GoogleMap } from '@angular/google-maps';
+import { MapMarker, MapMarkerClusterer, GoogleMap } from '@angular/google-maps';
 import { Bike, BikeService } from './scooter.service';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [GoogleMap, MapMarkerClusterer, MapAdvancedMarker],
+  imports: [GoogleMap, MapMarkerClusterer, MapMarker],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,9 +23,10 @@ export class App {
       url: `${bike.tenant.toLowerCase()}-${bike.vehicle_type}.svg`,
       scaledSize: {
         width: 20,
-        height: 30
-      } as google.maps.Size
-    }
+        height: 30,
+      } as google.maps.Size,
+    };
+  }
   private readonly reloadTick = signal(0);
 
   readonly center = signal<google.maps.LatLngLiteral>(this.fallbackCenter);
