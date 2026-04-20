@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { catchError, combineLatest, map, Observable, of } from 'rxjs';
+import { catchError, combineLatest, map, Observable, of, Subject } from 'rxjs';
 
 interface DottAPIDataBike {
   bike_id: string;
@@ -44,9 +44,19 @@ export interface Bike {
 @Injectable({ providedIn: 'root' })
 export class BikeService {
   private http = inject(HttpClient);
-  getAllBikes(city: string): Observable<Bike[]> {
+  city = '';
+  reloadTick$$ = new Subject();
+
+  getCity(lat: number, lng: number) {
+    return this.http.get<any>(
+      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?key=AIzaSyCsdGSZfDop3K1qxjH0YmfahtF3g3w79FY`,
+      // `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&sensor=true&key=AIzaSyCsdGSZfDop3K1qxjH0YmfahtF3g3w79FY`,
+    );
+  }
+
+  getAllBikes(): Observable<Bike[]> {
     // return this.getAllDott(city);
-    return combineLatest([this.getAllDott(city), this.getAllLime(city)]).pipe(
+    return combineLatest([this.getAllDott(this.city), this.getAllLime(this.city)]).pipe(
       map(([dott, lime]) => [...dott, ...lime]),
     );
   }
