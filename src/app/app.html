@@ -1,19 +1,26 @@
-<google-map height="400px" width="750px" mapId="scooterMap" [zoom]="12" [center]="center">
-  <map-marker-clusterer>
-    @for (bike of bikes(); track $index) {
-      <map-marker #marker="mapMarker" [position]="bike.latLng" (mapClick)="openInfo(marker, bike)" />
-    }
-  </map-marker-clusterer>
-  <map-info-window>
+<div class="app-shell">
+  <header class="menu-bar">
+    <div class="menu-bar__title">All Scooter</div>
+
+    <button class="menu-bar__reload" type="button" (click)="reloadBikes()">Reload</button>
+  </header>
+
+  <main class="map-layout">
+    <section class="map-card" aria-label="Scooter map">
+      <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="12" [center]="center()">
+        <map-marker-clusterer>
+          @for (bike of bikes(); track bike.bike_id) {
+            <map-marker #marker="mapMarker" [position]="bike.latLng" [icon]="markerIcon(bike)" />
+          }
+        </map-marker-clusterer>
+        <map-info-window>
     <div>
       <pre>
         {{ selectedBike() | json }}
       </pre>
     </div>
   </map-info-window>
-</google-map>
-<!-- <ol>
-  @for (bike of bikes(); track $index) {
-    <li>{{ bike.bike_id }} {{ bike.vehicle_type }}</li>
-  }
-</ol> -->
+      </google-map>
+    </section>
+  </main>
+</div>
