@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { BikeService } from './scooter.service';
-import { environment } from '../environments/environment';
 import { MapComponent } from './map';
 
 @Component({
@@ -13,7 +12,6 @@ import { MapComponent } from './map';
 export class App implements OnInit {
   private readonly service = inject(BikeService);
   maps = true;
-  gKey = environment.gKey;
   private readonly fallbackCenter: google.maps.LatLngLiteral = {
     lat: 53.59840544367906,
     lng: 10.063711568459246,
@@ -37,6 +35,10 @@ export class App implements OnInit {
 
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        this.service.currentLocation = {
+          lat: coords.latitude,
+          lng: coords.longitude,
+        };
         this.center.set({
           lat: coords.latitude,
           lng: coords.longitude,

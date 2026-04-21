@@ -1,11 +1,19 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { GoogleMap, MapAdvancedMarker, MapMarkerClusterer } from '@angular/google-maps';
+import { of, Subject } from 'rxjs';
 import { App } from './app';
+import { MapComponent } from './map';
+import { BikeService } from './scooter.service';
 
 describe('App', () => {
   const geolocation = {
     getCurrentPosition: vi.fn(),
+  };
+  const bikeServiceMock = {
+    city: '',
+    currentLocation: null as google.maps.LatLngLiteral | null,
+    reloadTick$$: new Subject(),
+    getCity: vi.fn(() => of({ results: [{ postalAddress: { locality: 'Munich' } }] })),
   };
 
   beforeEach(async () => {
@@ -26,7 +34,7 @@ describe('App', () => {
 
     TestBed.overrideComponent(App, {
       remove: {
-        imports: [GoogleMap, MapMarkerClusterer, MapAdvancedMarker],
+        imports: [MapComponent],
       },
       add: {
         schemas: [NO_ERRORS_SCHEMA],
@@ -35,6 +43,7 @@ describe('App', () => {
 
     await TestBed.configureTestingModule({
       imports: [App],
+      providers: [{ provide: BikeService, useValue: bikeServiceMock }],
     }).compileComponents();
   });
 
