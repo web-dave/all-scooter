@@ -49,8 +49,7 @@ export class BikeService {
 
   getCity(lat: number, lng: number) {
     return this.http.get<any>(
-      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?key=AIzaSyCsdGSZfDop3K1qxjH0YmfahtF3g3w79FY`,
-      // `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&sensor=true&key=AIzaSyCsdGSZfDop3K1qxjH0YmfahtF3g3w79FY`,
+      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?key=---`,
     );
   }
 
