@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { catchError, combineLatest, map, Observable, of, Subject } from 'rxjs';
 import { environment } from '../environments/environment';
 
@@ -45,7 +45,12 @@ export interface Bike {
 @Injectable({ providedIn: 'root' })
 export class BikeService {
   private http = inject(HttpClient);
-  city = '';
+  city = signal('');
+  private readonly fallbackCenter: google.maps.LatLngLiteral = {
+    lat: 53.59840544367906,
+    lng: 10.063711568459246,
+  };
+  center = signal<google.maps.LatLngLiteral>(this.fallbackCenter);
   reloadTick$$ = new Subject();
 
   getCity(lat: number, lng: number) {
@@ -55,8 +60,8 @@ export class BikeService {
   }
 
   getAllBikes(): Observable<Bike[]> {
-    // return this.getAllDott(city);
-    return combineLatest([this.getAllDott(this.city), this.getAllLime(this.city)]).pipe(
+    console.log('get all');
+    return combineLatest([this.getAllDott(this.city()), this.getAllLime(this.city())]).pipe(
       map(([dott, lime]) => [...dott, ...lime]),
     );
   }
