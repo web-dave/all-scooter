@@ -50,7 +50,7 @@ export class BikeService {
 
   getCity(lat: number, lng: number) {
     return this.http.get<any>(
-      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?key=---`,
+      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?key=${environment.gKey}`,
     );
   }
 
