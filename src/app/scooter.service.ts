@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { catchError, combineLatest, map, Observable, of, Subject } from 'rxjs';
+import { environment } from '../environments/environment';
 
 interface DottAPIDataBike {
   bike_id: string;
@@ -62,7 +63,7 @@ export class BikeService {
   }
 
   getAllDott(city: string): Observable<Bike[]> {
-    const url = `https://gbfs.api.ridedott.com/public/v2/${city}/free_bike_status.json`;
+    const url = `${environment.dottUrl}${city}/free_bike_status.json`;
     return this.http.get<{ data: { bikes: DottAPIDataBike[] } }>(url).pipe(
       map((res) => res.data.bikes),
       map((bikes) =>
@@ -94,7 +95,7 @@ export class BikeService {
   }
 
   getAllLime(city: string): Observable<Bike[]> {
-    const url = `limeapi/${city}/free_bike_status`;
+    const url = `${environment.limeUrl}${city}/free_bike_status`;
     return this.http.get<{ data: { bikes: LimeAPIDataBike[] } }>(url).pipe(
       map((res) => res.data.bikes),
       catchError(() => of([])),
