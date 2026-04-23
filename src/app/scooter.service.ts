@@ -45,11 +45,7 @@ interface LimeBikePinsResponse {
 
 interface LimeEmailLoginResponse {
   token?: string;
-  data?: {
-    token?: string;
-  };
   user?: {
-    token?: string;
     attributes?: {
       token?: string;
     };
@@ -78,6 +74,9 @@ export class BikeService {
   private readonly limeMapBoundsOffset = 0.02;
   private readonly limeMapZoom = 16;
   private readonly limeAppVersion = '3.248.1';
+  private readonly limeUserAgreementCountryCode = 'DE';
+  private readonly limeUserAgreementVersion = 4;
+  private readonly limeFormUrlEncodedContentType = 'application/x-www-form-urlencoded';
   private readonly limePromptEmailMessage = 'Bitte gib deine Lime E-Mail Adresse ein.';
   private readonly limePromptMagicLinkTokenMessage =
     'Bitte gib den magic_link_token aus dem Link in deiner E-Mail ein.';
@@ -163,8 +162,8 @@ export class BikeService {
     return this.http
       .post(`${environment.limeUrl}v2/onboarding/magic-link`, {
         email,
-        user_agreement_country_code: 'DE',
-        user_agreement_version: 4,
+        user_agreement_country_code: this.limeUserAgreementCountryCode,
+        user_agreement_version: this.limeUserAgreementVersion,
       })
       .pipe(
         switchMap(() => {
@@ -174,16 +173,15 @@ export class BikeService {
           }
 
           const headers = new HttpHeaders({
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': this.limeFormUrlEncodedContentType,
             'X-Device-Token': deviceToken,
           });
+          const body = new URLSearchParams({
+            magic_link_token: magicLinkToken,
+          }).toString();
 
           return this.http
-            .post<LimeEmailLoginResponse>(
-              `${environment.limeUrl}v2/onboarding/login`,
-              `magic_link_token=${encodeURIComponent(magicLinkToken)}`,
-              { headers },
-            )
+            .post<LimeEmailLoginResponse>(`${environment.limeUrl}v2/onboarding/login`, body, { headers })
             .pipe(map((response) => this.getLimeAuthToken(response)));
         }),
         tap((token) => {
@@ -196,9 +194,7 @@ export class BikeService {
   }
 
   private getLimeAuthToken(response: LimeEmailLoginResponse): string | null {
-    return (
-      response.token ?? response.data?.token ?? response.user?.token ?? response.user?.attributes?.token ?? null
-    );
+    return response.token ?? response.user?.attributes?.token ?? null;
   }
 
   private getLimeBikePins(token: string): Observable<LimeAPIDataBike[]> {

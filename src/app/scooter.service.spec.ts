@@ -124,4 +124,35 @@ describe('BikeService (Lime)', () => {
 
     expect(localStorage.getItem(limeTokenStorageKey)).toBeNull();
   });
+
+  it('uses nested login token from user attributes', () => {
+    service.center.set({ lat: 53.55, lng: 10 });
+    vi.spyOn(window, 'prompt')
+      .mockReturnValueOnce('rider@example.com')
+      .mockReturnValueOnce('magic-token');
+
+    service.getAllLime('hamburg').subscribe((bikes) => {
+      expect(bikes).toEqual([]);
+    });
+
+    httpTestingController
+      .expectOne((request) => request.method === 'POST' && request.url.endsWith('/v2/onboarding/magic-link'))
+      .flush({});
+
+    httpTestingController
+      .expectOne((request) => request.method === 'POST' && request.url.endsWith('/v2/onboarding/login'))
+      .flush({
+        user: {
+          attributes: {
+            token: 'nested-token',
+          },
+        },
+      });
+
+    const bikePinsRequest = httpTestingController.expectOne(
+      (request) => request.method === 'GET' && request.url.endsWith('/v2/map/bike_pins'),
+    );
+    expect(bikePinsRequest.request.headers.get('Authorization')).toBe('Bearer nested-token');
+    bikePinsRequest.flush({ data: { bike_pins: [] } });
+  });
 });
