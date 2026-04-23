@@ -1,4 +1,4 @@
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { NO_ERRORS_SCHEMA, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of, Subject } from 'rxjs';
 import { App } from './app';
@@ -10,14 +10,20 @@ describe('App', () => {
     getCurrentPosition: vi.fn(),
   };
   const bikeServiceMock = {
-    city: '',
-    currentLocation: null as google.maps.LatLngLiteral | null,
+    city: signal(''),
+    center: signal<google.maps.LatLngLiteral>({
+      lat: 53.59840544367906,
+      lng: 10.063711568459246,
+    }),
     reloadTick$$: new Subject(),
     getCity: vi.fn(() => of({ results: [{ postalAddress: { locality: 'Munich' } }] })),
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.spyOn(App.prototype, 'initMaps').mockImplementation(function (this: App) {
+      this.maps.set(true);
+    });
     geolocation.getCurrentPosition.mockImplementation((success) => {
       success({
         coords: {
@@ -67,7 +73,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.center()).toEqual({
+    expect(bikeServiceMock.center()).toEqual({
       lat: 48.137154,
       lng: 11.576124,
     });

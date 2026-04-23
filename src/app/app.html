@@ -7,8 +7,8 @@
 
   <main class="map-layout">
     <section class="map-card" aria-label="Scooter map">
-      @if (maps) {
-        <app-map [center]="center()" />
+      @if (maps()) {
+        <app-map />
       }
     </section>
   </main>

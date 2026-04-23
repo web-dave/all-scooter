@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import {
   catchError,
   combineLatest,
@@ -10,6 +10,7 @@ import {
   Subject,
   switchMap,
 } from 'rxjs';
+import { environment } from '../environments/environment';
 
 interface DottAPIDataBike {
   bike_id: string;
@@ -104,48 +105,31 @@ export class BikeService {
   private http = inject(HttpClient);
   private readonly voiAuthStorageKey = 'voi_auth_token';
   private readonly voiAccessStorageKey = 'voi_access_token';
+  private readonly fallbackCenter: google.maps.LatLngLiteral = {
+    lat: 53.59840544367906,
+    lng: 10.063711568459246,
+  };
 
   private voiAuthenticationToken: string | null = this.getStorageItem(this.voiAuthStorageKey);
   private voiAccessToken: string | null = this.getStorageItem(this.voiAccessStorageKey);
-  city = '';
-  currentLocation: google.maps.LatLngLiteral | null = null;
+  city = signal('');
+  center = signal<google.maps.LatLngLiteral>(this.fallbackCenter);
   reloadTick$$ = new Subject();
 
   getCity(lat: number, lng: number) {
     return this.http.get<any>(
-      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?key=---`,
+      `https://geocode.googleapis.com/v4/geocode/location/${lat},${lng}?key=${environment.gKey}`,
     );
   }
 
   getAllBikes(): Observable<Bike[]> {
-    return combineLatest([this.getAllDott(this.city), this.getAllLime(this.city), this.getAllVoi()]).pipe(
+    return combineLatest([this.getAllDott(this.city()), this.getAllLime(this.city()), this.getAllVoi()]).pipe(
       map(([dott, lime, voi]) => [...dott, ...lime, ...voi]),
     );
   }
 
-  getAllVoi(): Observable<Bike[]> {
-    return this.getVoiAccessToken().pipe(
-      switchMap((accessToken) => {
-        if (!accessToken) {
-          return of([]);
-        }
-        return this.getVoiZoneIds(accessToken).pipe(
-          switchMap((zoneIds) => {
-            if (zoneIds.length === 0) {
-              return of([]);
-            }
-            return combineLatest(zoneIds.map((zoneId) => this.getVoiVehicles(accessToken, zoneId))).pipe(
-              map((zoneVehicles) => zoneVehicles.flat()),
-            );
-          }),
-        );
-      }),
-      catchError(() => of([])),
-    );
-  }
-
   getAllDott(city: string): Observable<Bike[]> {
-    const url = `https://gbfs.api.ridedott.com/public/v2/${city}/free_bike_status.json`;
+    const url = `${environment.dottUrl}${city}/free_bike_status.json`;
     return this.http.get<{ data: { bikes: DottAPIDataBike[] } }>(url).pipe(
       map((res) => res.data.bikes),
       map((bikes) =>
@@ -177,7 +161,7 @@ export class BikeService {
   }
 
   getAllLime(city: string): Observable<Bike[]> {
-    const url = `limeapi/${city}/free_bike_status`;
+    const url = `${environment.limeUrl}${city}/free_bike_status`;
     return this.http.get<{ data: { bikes: LimeAPIDataBike[] } }>(url).pipe(
       map((res) => res.data.bikes),
       catchError(() => of([])),
@@ -199,6 +183,27 @@ export class BikeService {
             }) as Bike,
         ),
       ),
+    );
+  }
+
+  private getAllVoi(): Observable<Bike[]> {
+    return this.getVoiAccessToken().pipe(
+      switchMap((accessToken) => {
+        if (!accessToken) {
+          return of([]);
+        }
+        return this.getVoiZoneIds(accessToken).pipe(
+          switchMap((zoneIds) => {
+            if (zoneIds.length === 0) {
+              return of([]);
+            }
+            return combineLatest(zoneIds.map((zoneId) => this.getVoiVehicles(accessToken, zoneId))).pipe(
+              map((zoneVehicles) => zoneVehicles.flat()),
+            );
+          }),
+        );
+      }),
+      catchError(() => of([])),
     );
   }
 
@@ -325,14 +330,15 @@ export class BikeService {
 
   private getVoiZoneIds(accessToken: string): Observable<string[]> {
     const headers = { 'x-access-token': accessToken };
-    const query = this.currentLocation ? `?lat=${this.currentLocation.lat}&lng=${this.currentLocation.lng}` : '';
+    const location = this.center();
+    const query = `?lat=${location.lat}&lng=${location.lng}`;
     return this.http.get<VoiZonesResponse>(`voiapi/v1/zones${query}`, { headers }).pipe(
       map((response) => response.zones ?? response.data?.zones ?? []),
       map((zones) => {
         if (zones.length === 0) {
           return [];
         }
-        const normalizedCity = this.city.trim().toLowerCase();
+        const normalizedCity = this.city().trim().toLowerCase();
         const cityZones =
           normalizedCity.length > 0
             ? zones.filter((zone) =>

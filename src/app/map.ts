@@ -1,13 +1,13 @@
-import { Component, inject, input, OnInit, signal, viewChild } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import { GoogleMap, MapInfoWindow, MapMarker, MapMarkerClusterer } from '@angular/google-maps';
-import { Subject, switchMap } from 'rxjs';
+import { merge, of, switchMap } from 'rxjs';
 import { Bike, BikeService } from './scooter.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-map',
   template: `
-    <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="12" [center]="center()">
+    <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="18" [center]="center()">
       <map-marker-clusterer>
         @for (bike of bikes(); track bike.bike_id) {
           <map-marker
@@ -44,15 +44,15 @@ import { toSignal } from '@angular/core/rxjs-interop';
   `,
   imports: [GoogleMap, MapMarkerClusterer, MapMarker, MapInfoWindow],
 })
-export class MapComponent implements OnInit {
-  center = input.required<google.maps.LatLngLiteral>();
+export class MapComponent {
   private readonly service = inject(BikeService);
+  center = this.service.center;
 
   infoWindow = viewChild.required(MapInfoWindow);
   selectedBike = signal<Bike | null>(null);
 
   readonly bikes = toSignal(
-    this.service.reloadTick$$.pipe(switchMap(() => this.service.getAllBikes())),
+    merge(this.service.reloadTick$$, of(1)).pipe(switchMap(() => this.service.getAllBikes())),
     {
       initialValue: [],
     },
@@ -71,9 +71,5 @@ export class MapComponent implements OnInit {
         height: 30,
       } as google.maps.Size,
     };
-  }
-
-  ngOnInit(): void {
-    // throw new Error('Method not implemented.');
   }
 }

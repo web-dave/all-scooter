@@ -17,8 +17,8 @@ describe('BikeService', () => {
 
   function createService() {
     service = TestBed.inject(BikeService);
-    service.city = 'hamburg';
-    service.currentLocation = { lat: 53.5511, lng: 9.9937 };
+    service.city.set('hamburg');
+    service.center.set({ lat: 53.5511, lng: 9.9937 });
     return service;
   }
 
@@ -35,9 +35,11 @@ describe('BikeService', () => {
     service.getAllBikes().subscribe((result) => bikes.push(...result));
 
     httpTestingController
-      .expectOne('https://gbfs.api.ridedott.com/public/v2/hamburg/free_bike_status.json')
+      .expectOne((request) => request.url.endsWith('/hamburg/free_bike_status.json'))
       .flush({ data: { bikes: [] } });
-    httpTestingController.expectOne('limeapi/hamburg/free_bike_status').flush({ data: { bikes: [] } });
+    httpTestingController
+      .expectOne((request) => request.url.endsWith('/hamburg/free_bike_status'))
+      .flush({ data: { bikes: [] } });
     httpTestingController.expectOne('voiapi/v1/zones?lat=53.5511&lng=9.9937').flush({
       zones: [{ id: 'zone-1', city: 'hamburg' }],
     });
@@ -87,9 +89,11 @@ describe('BikeService', () => {
     service.getAllBikes().subscribe((result) => bikes.push(...result));
 
     httpTestingController
-      .expectOne('https://gbfs.api.ridedott.com/public/v2/hamburg/free_bike_status.json')
+      .expectOne((request) => request.url.endsWith('/hamburg/free_bike_status.json'))
       .flush({ data: { bikes: [] } });
-    httpTestingController.expectOne('limeapi/hamburg/free_bike_status').flush({ data: { bikes: [] } });
+    httpTestingController
+      .expectOne((request) => request.url.endsWith('/hamburg/free_bike_status'))
+      .flush({ data: { bikes: [] } });
     httpTestingController.expectOne('voiapi/v1/auth/verify/phone').flush({ token: 'verify-token' });
     httpTestingController.expectOne('voiapi/v2/auth/verify/code').flush({
       verificationStep: 'authorized',
