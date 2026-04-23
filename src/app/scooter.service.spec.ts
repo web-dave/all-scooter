@@ -66,33 +66,33 @@ describe('BikeService (Lime)', () => {
     expect(bikesCount).toBe(1);
   });
 
-  it('authenticates with prompts and stores token when none exists', () => {
+  it('authenticates with email flow and stores token when none exists', () => {
     service.center.set({ lat: 53.55, lng: 10 });
     const promptSpy = vi
       .spyOn(window, 'prompt')
-      .mockReturnValueOnce('+491701234567')
-      .mockReturnValueOnce('123456');
+      .mockReturnValueOnce('rider@example.com')
+      .mockReturnValueOnce('magic-token');
 
     service.getAllLime('hamburg').subscribe((bikes) => {
       expect(bikes).toEqual([]);
     });
 
-    const loginRequest = httpTestingController.expectOne(
-      (request) =>
-        request.method === 'GET' &&
-        request.url.endsWith('/v1/login') &&
-        request.params.get('phone') === '+491701234567',
+    const magicLinkRequest = httpTestingController.expectOne(
+      (request) => request.method === 'POST' && request.url.endsWith('/v2/onboarding/magic-link'),
     );
-    loginRequest.flush({});
-
-    const otpRequest = httpTestingController.expectOne(
-      (request) => request.method === 'POST' && request.url.endsWith('/v1/login'),
-    );
-    expect(otpRequest.request.body).toEqual({
-      login_code: '123456',
-      phone: '+491701234567',
+    expect(magicLinkRequest.request.body).toEqual({
+      email: 'rider@example.com',
+      user_agreement_country_code: 'DE',
+      user_agreement_version: 4,
     });
-    otpRequest.flush({ token: 'new-token' });
+    magicLinkRequest.flush({});
+
+    const loginRequest = httpTestingController.expectOne(
+      (request) => request.method === 'POST' && request.url.endsWith('/v2/onboarding/login'),
+    );
+    expect(loginRequest.request.headers.get('X-Device-Token')).toBeTruthy();
+    expect(loginRequest.request.body).toBe('magic_link_token=magic-token');
+    loginRequest.flush({ token: 'new-token' });
 
     const bikePinsRequest = httpTestingController.expectOne(
       (request) => request.method === 'GET' && request.url.endsWith('/v2/map/bike_pins'),

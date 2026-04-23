@@ -43,6 +43,19 @@ interface LimeBikePinsResponse {
   data?: LimeAPIDataBike[] | { bikes?: LimeAPIDataBike[]; bike_pins?: LimeAPIDataBike[] };
 }
 
+interface LimeEmailLoginResponse {
+  token?: string;
+  data?: {
+    token?: string;
+  };
+  user?: {
+    token?: string;
+    attributes?: {
+      token?: string;
+    };
+  };
+}
+
 export interface Bike {
   tenant: 'DOTT' | 'Lime';
   bike_id: string;
@@ -65,9 +78,9 @@ export class BikeService {
   private readonly limeMapBoundsOffset = 0.02;
   private readonly limeMapZoom = 16;
   private readonly limeAppVersion = '3.248.1';
-  private readonly limePromptPhoneNumberMessage =
-    'Bitte gib deine Lime Handynummer (mit Ländervorwahl, z.B. +49...) ein.';
-  private readonly limePromptOtpMessage = 'Bitte gib den Lime SMS-Code ein.';
+  private readonly limePromptEmailMessage = 'Bitte gib deine Lime E-Mail Adresse ein.';
+  private readonly limePromptMagicLinkTokenMessage =
+    'Bitte gib den magic_link_token aus dem Link in deiner E-Mail ein.';
   private readonly limeDeviceTokenPrefix = 'all-scooter';
   city = signal('');
   private readonly fallbackCenter: google.maps.LatLngLiteral = {
@@ -140,28 +153,38 @@ export class BikeService {
       return of(token);
     }
 
-    const phone = this.askUser(this.limePromptPhoneNumberMessage);
-    if (phone == null) {
+    const email = this.askUser(this.limePromptEmailMessage);
+    if (email == null) {
       return of(null);
     }
 
+    const deviceToken = this.getLimeDeviceToken();
+
     return this.http
-      .get(`${environment.limeUrl}v1/login`, {
-        params: { phone },
+      .post(`${environment.limeUrl}v2/onboarding/magic-link`, {
+        email,
+        user_agreement_country_code: 'DE',
+        user_agreement_version: 4,
       })
       .pipe(
         switchMap(() => {
-          const otp = this.askUser(this.limePromptOtpMessage);
-          if (otp == null) {
+          const magicLinkToken = this.askUser(this.limePromptMagicLinkTokenMessage);
+          if (magicLinkToken == null) {
             return of(null);
           }
 
+          const headers = new HttpHeaders({
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Device-Token': deviceToken,
+          });
+
           return this.http
-            .post<{ token?: string }>(`${environment.limeUrl}v1/login`, {
-              login_code: otp,
-              phone,
-            })
-            .pipe(map((response) => response.token ?? null));
+            .post<LimeEmailLoginResponse>(
+              `${environment.limeUrl}v2/onboarding/login`,
+              `magic_link_token=${encodeURIComponent(magicLinkToken)}`,
+              { headers },
+            )
+            .pipe(map((response) => this.getLimeAuthToken(response)));
         }),
         tap((token) => {
           if (token != null) {
@@ -170,6 +193,12 @@ export class BikeService {
         }),
         catchError(() => of(null)),
       );
+  }
+
+  private getLimeAuthToken(response: LimeEmailLoginResponse): string | null {
+    return (
+      response.token ?? response.data?.token ?? response.user?.token ?? response.user?.attributes?.token ?? null
+    );
   }
 
   private getLimeBikePins(token: string): Observable<LimeAPIDataBike[]> {
