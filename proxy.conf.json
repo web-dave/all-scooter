@@ -1,6 +1,6 @@
 {
   "/limeapi/**": {
-    "target": "https://data.lime.bike/api/partners/v1/gbfs",
+    "target": "https://web-production.lime.bike/api/rider",
     "secure": true,
     "changeOrigin": true,
     "pathRewrite": {
