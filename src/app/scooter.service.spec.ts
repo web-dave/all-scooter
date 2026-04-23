@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { BikeService } from './scooter.service';
 
 describe('BikeService (Lime)', () => {
+  const limeTokenStorageKey = 'all-scooter:lime-token';
   let service: BikeService;
   let httpTestingController: HttpTestingController;
 
@@ -22,7 +23,7 @@ describe('BikeService (Lime)', () => {
   });
 
   it('uses stored token and maps bike pins', () => {
-    localStorage.setItem('lime-token', 'stored-token');
+    localStorage.setItem(limeTokenStorageKey, 'stored-token');
     service.center.set({ lat: 53.55, lng: 10 });
 
     let bikesCount = 0;
@@ -99,12 +100,12 @@ describe('BikeService (Lime)', () => {
     expect(bikePinsRequest.request.headers.get('Authorization')).toBe('Bearer new-token');
     bikePinsRequest.flush({ data: { bike_pins: [] } });
 
-    expect(localStorage.getItem('lime-token')).toBe('new-token');
+    expect(localStorage.getItem(limeTokenStorageKey)).toBe('new-token');
     expect(promptSpy).toHaveBeenCalledTimes(2);
   });
 
   it('clears stored token after unauthorized bike pin request', () => {
-    localStorage.setItem('lime-token', 'expired-token');
+    localStorage.setItem(limeTokenStorageKey, 'expired-token');
 
     service.getAllLime('hamburg').subscribe((bikes) => {
       expect(bikes).toEqual([]);
@@ -121,6 +122,6 @@ describe('BikeService (Lime)', () => {
       },
     );
 
-    expect(localStorage.getItem('lime-token')).toBeNull();
+    expect(localStorage.getItem(limeTokenStorageKey)).toBeNull();
   });
 });

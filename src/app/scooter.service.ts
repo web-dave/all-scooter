@@ -60,10 +60,15 @@ export interface Bike {
 @Injectable({ providedIn: 'root' })
 export class BikeService {
   private http = inject(HttpClient);
-  private readonly limeTokenStorageKey = 'lime-token';
-  private readonly limeDeviceTokenStorageKey = 'lime-device-token';
+  private readonly limeTokenStorageKey = 'all-scooter:lime-token';
+  private readonly limeDeviceTokenStorageKey = 'all-scooter:lime-device-token';
   private readonly limeMapBoundsOffset = 0.02;
   private readonly limeMapZoom = 16;
+  private readonly limeAppVersion = '3.248.1';
+  private readonly limePromptPhoneNumberMessage =
+    'Bitte gib deine Lime Handynummer (mit Ländervorwahl, z.B. +49...) ein.';
+  private readonly limePromptOtpMessage = 'Bitte gib den Lime SMS-Code ein.';
+  private readonly limeDeviceTokenPrefix = 'all-scooter';
   city = signal('');
   private readonly fallbackCenter: google.maps.LatLngLiteral = {
     lat: 53.59840544367906,
@@ -135,7 +140,7 @@ export class BikeService {
       return of(token);
     }
 
-    const phone = this.askUser('Bitte gib deine Lime Handynummer (mit Ländervorwahl, z.B. +49...) ein.');
+    const phone = this.askUser(this.limePromptPhoneNumberMessage);
     if (phone == null) {
       return of(null);
     }
@@ -146,7 +151,7 @@ export class BikeService {
       })
       .pipe(
         switchMap(() => {
-          const otp = this.askUser('Bitte gib den Lime SMS-Code ein.');
+          const otp = this.askUser(this.limePromptOtpMessage);
           if (otp == null) {
             return of(null);
           }
@@ -173,7 +178,7 @@ export class BikeService {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${token}`,
       Platform: 'Web',
-      'App-Version': '3.248.1',
+      'App-Version': this.limeAppVersion,
       'X-Device-Token': this.getLimeDeviceToken(),
     });
     return this.http
@@ -220,9 +225,14 @@ export class BikeService {
       return null;
     }
 
+    const bikeId = bikeData.bike_id ?? bike.id;
+    if (bikeId == null) {
+      return null;
+    }
+
     return {
       tenant: 'Lime',
-      bike_id: bikeData.bike_id ?? bike.id ?? 'unknown',
+      bike_id: bikeId,
       latLng: {
         lat,
         lng,
@@ -266,7 +276,7 @@ export class BikeService {
 
   private getLimeDeviceToken(): string {
     if (typeof localStorage === 'undefined') {
-      return 'all-scooter-device';
+      return `${this.limeDeviceTokenPrefix}-device`;
     }
 
     const existingDeviceToken = localStorage.getItem(this.limeDeviceTokenStorageKey);
@@ -277,8 +287,19 @@ export class BikeService {
     const generatedDeviceToken =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
-        : `all-scooter-${Date.now()}`;
+        : this.generateFallbackDeviceToken();
     localStorage.setItem(this.limeDeviceTokenStorageKey, generatedDeviceToken);
     return generatedDeviceToken;
+  }
+
+  private generateFallbackDeviceToken(): string {
+    if (typeof crypto === 'undefined' || !('getRandomValues' in crypto)) {
+      return `${this.limeDeviceTokenPrefix}-device`;
+    }
+
+    const randomBytes = new Uint8Array(16);
+    crypto.getRandomValues(randomBytes);
+    const randomHex = Array.from(randomBytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${this.limeDeviceTokenPrefix}-${randomHex}`;
   }
 }
