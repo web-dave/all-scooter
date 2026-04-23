@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { BikeService } from './scooter.service';
-import { environment } from '../environments/environment';
 import { MapComponent } from './map';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -53,6 +53,7 @@ export class App implements OnInit {
       },
     );
   }
+
   initMaps() {
     const g: any = {
       v: 'weekly',
@@ -76,11 +77,12 @@ export class App implements OnInit {
         (h = new Promise(async (f, n) => {
           await (a = m.createElement('script'));
           e.set('libraries', [...r] + '');
-          for (k in g)
+          for (k in g) {
             e.set(
               k.replace(/[A-Z]/g, (t: any) => '_' + t[0].toLowerCase()),
               g[k],
             );
+          }
           e.set('callback', c + '.maps.' + q);
           a.src = `https://maps.${c}apis.com/maps/api/js?` + e;
           d[q] = f;

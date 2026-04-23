@@ -1,6 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
-import { catchError, combineLatest, map, Observable, of, Subject } from 'rxjs';
+import {
+  catchError,
+  combineLatest,
+  defer,
+  map,
+  Observable,
+  of,
+  Subject,
+  switchMap,
+} from 'rxjs';
 import { environment } from '../environments/environment';
 
 interface DottAPIDataBike {
@@ -29,7 +38,7 @@ interface LimeAPIDataBike {
 }
 
 export interface Bike {
-  tenant: 'DOTT' | 'Lime';
+  tenant: 'DOTT' | 'Lime' | 'VOI';
   bike_id: string;
   latLng: {
     lat: number;
@@ -42,14 +51,68 @@ export interface Bike {
   vehicle_type: 'bike' | 'scooter';
 }
 
+interface VoiVerifyPhoneResponse {
+  token: string;
+}
+
+interface VoiVerifyCodeResponse {
+  verificationStep?: 'emailValidationRequired' | 'authorized' | 'deviceActivationRequired';
+  authToken?: string;
+}
+
+interface VoiAuthTokenResponse {
+  authToken: string;
+}
+
+interface VoiSessionResponse {
+  accessToken: string;
+  authenticationToken: string;
+}
+
+interface VoiZone {
+  id?: string | number;
+  zone_id?: string | number;
+  name?: string;
+  city?: string;
+}
+
+interface VoiZonesResponse {
+  zones?: VoiZone[];
+  data?: {
+    zones?: VoiZone[];
+  };
+}
+
+interface VoiVehicle {
+  id: string;
+  battery?: number;
+  location: {
+    lng: number;
+    lat: number;
+  };
+}
+
+interface VoiVehiclesResponse {
+  data?: {
+    vehicle_groups?: {
+      vehicles?: VoiVehicle[];
+    }[];
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class BikeService {
   private http = inject(HttpClient);
-  city = signal('');
+  private readonly voiAuthStorageKey = 'voi_auth_token';
+  private readonly voiAccessStorageKey = 'voi_access_token';
   private readonly fallbackCenter: google.maps.LatLngLiteral = {
     lat: 53.59840544367906,
     lng: 10.063711568459246,
   };
+
+  private voiAuthenticationToken: string | null = this.getStorageItem(this.voiAuthStorageKey);
+  private voiAccessToken: string | null = this.getStorageItem(this.voiAccessStorageKey);
+  city = signal('');
   center = signal<google.maps.LatLngLiteral>(this.fallbackCenter);
   reloadTick$$ = new Subject();
 
@@ -60,9 +123,8 @@ export class BikeService {
   }
 
   getAllBikes(): Observable<Bike[]> {
-    console.log('get all');
-    return combineLatest([this.getAllDott(this.city()), this.getAllLime(this.city())]).pipe(
-      map(([dott, lime]) => [...dott, ...lime]),
+    return combineLatest([this.getAllDott(this.city()), this.getAllLime(this.city()), this.getAllVoi()]).pipe(
+      map(([dott, lime, voi]) => [...dott, ...lime, ...voi]),
     );
   }
 
@@ -122,5 +184,240 @@ export class BikeService {
         ),
       ),
     );
+  }
+
+  private getAllVoi(): Observable<Bike[]> {
+    return this.getVoiAccessToken().pipe(
+      switchMap((accessToken) => {
+        if (!accessToken) {
+          return of([]);
+        }
+        return this.getVoiZoneIds(accessToken).pipe(
+          switchMap((zoneIds) => {
+            if (zoneIds.length === 0) {
+              return of([]);
+            }
+            return combineLatest(zoneIds.map((zoneId) => this.getVoiVehicles(accessToken, zoneId))).pipe(
+              map((zoneVehicles) => zoneVehicles.flat()),
+            );
+          }),
+        );
+      }),
+      catchError(() => of([])),
+    );
+  }
+
+  private getVoiAccessToken(): Observable<string | null> {
+    if (this.voiAccessToken) {
+      return of(this.voiAccessToken);
+    }
+
+    if (this.voiAuthenticationToken) {
+      return this.openVoiSession(this.voiAuthenticationToken).pipe(
+        map((session) => {
+          this.storeVoiTokens(session.authenticationToken, session.accessToken);
+          return session.accessToken;
+        }),
+        catchError(() => {
+          this.clearVoiTokens();
+          return this.startVoiAuthenticationFlow();
+        }),
+      );
+    }
+
+    return this.startVoiAuthenticationFlow();
+  }
+
+  private startVoiAuthenticationFlow(): Observable<string | null> {
+    return defer(() => {
+      const identifier = this.promptValue('Voi Anmeldung: Bitte E-Mail oder Handynummer eingeben');
+      if (!identifier) {
+        return of(null);
+      }
+
+      const email = identifier.includes('@') ? identifier : null;
+      const phoneNumberInput = email
+        ? this.promptValue('Voi Anmeldung: Handynummer ohne führende 0 eingeben')
+        : identifier;
+      if (!phoneNumberInput) {
+        return of(null);
+      }
+
+      const normalizedPhone = phoneNumberInput.replace(/\D/g, '');
+      if (!normalizedPhone) {
+        return of(null);
+      }
+
+      return this.requestVoiOtp(normalizedPhone).pipe(
+        switchMap((tokenResponse) => {
+          const otp = this.promptValue('Bitte den Voi OTP Code eingeben');
+          if (!otp) {
+            return of(null);
+          }
+          return this.verifyVoiOtp(tokenResponse.token, otp).pipe(
+            switchMap((verifyResponse) => this.resolveVoiAuthToken(tokenResponse.token, verifyResponse, email)),
+          );
+        }),
+        switchMap((authenticationToken) => {
+          if (!authenticationToken) {
+            return of(null);
+          }
+          return this.openVoiSession(authenticationToken).pipe(
+            map((session) => {
+              this.storeVoiTokens(session.authenticationToken, session.accessToken);
+              return session.accessToken;
+            }),
+          );
+        }),
+        catchError(() => of(null)),
+      );
+    });
+  }
+
+  private requestVoiOtp(phoneNumber: string): Observable<VoiVerifyPhoneResponse> {
+    return this.http.post<VoiVerifyPhoneResponse>('voiapi/v1/auth/verify/phone', {
+      country_code: 'DE',
+      phone_number: phoneNumber,
+    });
+  }
+
+  private verifyVoiOtp(token: string, code: string): Observable<VoiVerifyCodeResponse> {
+    return this.http.post<VoiVerifyCodeResponse>('voiapi/v2/auth/verify/code', {
+      code,
+      token,
+    });
+  }
+
+  private resolveVoiAuthToken(
+    token: string,
+    verifyResponse: VoiVerifyCodeResponse,
+    initialEmail: string | null,
+  ): Observable<string | null> {
+    if (verifyResponse.authToken && verifyResponse.verificationStep === 'authorized') {
+      return of(verifyResponse.authToken);
+    }
+
+    if (verifyResponse.verificationStep === 'emailValidationRequired') {
+      const email = initialEmail ?? this.promptValue('Bitte E-Mail für die Voi Bestätigung eingeben');
+      if (!email) {
+        return of(null);
+      }
+      return this.http
+        .post<VoiAuthTokenResponse>('voiapi/v1/auth/verify/presence', {
+          email,
+          token,
+        })
+        .pipe(map((response) => response.authToken));
+    }
+
+    if (verifyResponse.verificationStep === 'deviceActivationRequired') {
+      return this.http
+        .post<VoiAuthTokenResponse>('voiapi/v3/auth/verify/device/activate', {
+          token,
+          provider: 'sms',
+        })
+        .pipe(map((response) => response.authToken));
+    }
+
+    return of(verifyResponse.authToken ?? null);
+  }
+
+  private openVoiSession(authenticationToken: string): Observable<VoiSessionResponse> {
+    return this.http.post<VoiSessionResponse>('voiapi/v1/auth/session', {
+      authenticationToken,
+    });
+  }
+
+  private getVoiZoneIds(accessToken: string): Observable<string[]> {
+    const headers = { 'x-access-token': accessToken };
+    const location = this.center();
+    const query = `?lat=${location.lat}&lng=${location.lng}`;
+    return this.http.get<VoiZonesResponse>(`voiapi/v1/zones${query}`, { headers }).pipe(
+      map((response) => response.zones ?? response.data?.zones ?? []),
+      map((zones) => {
+        if (zones.length === 0) {
+          return [];
+        }
+        const normalizedCity = this.city().trim().toLowerCase();
+        const cityZones =
+          normalizedCity.length > 0
+            ? zones.filter((zone) =>
+                `${zone.name ?? ''} ${zone.city ?? ''}`.toLowerCase().includes(normalizedCity),
+              )
+            : zones;
+        const zonesToUse = cityZones.length > 0 ? cityZones : zones;
+        return [...new Set(zonesToUse.map((zone) => String(zone.id ?? zone.zone_id ?? '')).filter(Boolean))];
+      }),
+    );
+  }
+
+  private getVoiVehicles(accessToken: string, zoneId: string): Observable<Bike[]> {
+    const headers = { 'x-access-token': accessToken };
+    return this.http
+      .get<VoiVehiclesResponse>(`voiapi/v2/rides/vehicles?zone_id=${encodeURIComponent(zoneId)}`, { headers })
+      .pipe(
+        map((response) => response.data?.vehicle_groups ?? []),
+        map((groups) => groups.flatMap((group) => group.vehicles ?? [])),
+        map((vehicles) =>
+          vehicles.map((vehicle) => ({
+            tenant: 'VOI' as const,
+            bike_id: vehicle.id,
+            latLng: {
+              lat: vehicle.location.lat,
+              lng: vehicle.location.lng,
+            },
+            current_range_meters: -1,
+            current_fuel_percent:
+              typeof vehicle.battery === 'number' ? Math.min(Math.max(vehicle.battery, 0), 100) / 100 : -1,
+            is_reserved: false,
+            is_disabled: false,
+            vehicle_type: 'scooter' as const,
+          })),
+        ),
+        catchError(() => of([])),
+      );
+  }
+
+  private promptValue(message: string): string | null {
+    if (typeof window === 'undefined' || typeof window.prompt !== 'function') {
+      return null;
+    }
+    const value = window.prompt(message)?.trim() ?? '';
+    return value.length > 0 ? value : null;
+  }
+
+  private storeVoiTokens(authenticationToken: string, accessToken: string): void {
+    this.voiAuthenticationToken = authenticationToken;
+    this.voiAccessToken = accessToken;
+    this.setStorageItem(this.voiAuthStorageKey, authenticationToken);
+    this.setStorageItem(this.voiAccessStorageKey, accessToken);
+  }
+
+  private clearVoiTokens(): void {
+    this.voiAuthenticationToken = null;
+    this.voiAccessToken = null;
+    this.removeStorageItem(this.voiAuthStorageKey);
+    this.removeStorageItem(this.voiAccessStorageKey);
+  }
+
+  private getStorageItem(key: string): string | null {
+    if (typeof localStorage === 'undefined') {
+      return null;
+    }
+    return localStorage.getItem(key);
+  }
+
+  private setStorageItem(key: string, value: string): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    localStorage.setItem(key, value);
+  }
+
+  private removeStorageItem(key: string): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    localStorage.removeItem(key);
   }
 }

@@ -1,15 +1,29 @@
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { NO_ERRORS_SCHEMA, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { GoogleMap, MapAdvancedMarker, MapMarkerClusterer } from '@angular/google-maps';
+import { of, Subject } from 'rxjs';
 import { App } from './app';
+import { MapComponent } from './map';
+import { BikeService } from './scooter.service';
 
 describe('App', () => {
   const geolocation = {
     getCurrentPosition: vi.fn(),
   };
+  const bikeServiceMock = {
+    city: signal(''),
+    center: signal<google.maps.LatLngLiteral>({
+      lat: 53.59840544367906,
+      lng: 10.063711568459246,
+    }),
+    reloadTick$$: new Subject(),
+    getCity: vi.fn(() => of({ results: [{ postalAddress: { locality: 'Munich' } }] })),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.spyOn(App.prototype, 'initMaps').mockImplementation(function (this: App) {
+      this.maps.set(true);
+    });
     geolocation.getCurrentPosition.mockImplementation((success) => {
       success({
         coords: {
@@ -26,7 +40,7 @@ describe('App', () => {
 
     TestBed.overrideComponent(App, {
       remove: {
-        imports: [GoogleMap, MapMarkerClusterer, MapAdvancedMarker],
+        imports: [MapComponent],
       },
       add: {
         schemas: [NO_ERRORS_SCHEMA],
@@ -35,6 +49,7 @@ describe('App', () => {
 
     await TestBed.configureTestingModule({
       imports: [App],
+      providers: [{ provide: BikeService, useValue: bikeServiceMock }],
     }).compileComponents();
   });
 
@@ -58,7 +73,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.center()).toEqual({
+    expect(bikeServiceMock.center()).toEqual({
       lat: 48.137154,
       lng: 11.576124,
     });

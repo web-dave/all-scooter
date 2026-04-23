@@ -7,5 +7,14 @@
       "^/limeapi": ""
     },
     "logLevel": "debug"
+  },
+  "/voiapi/**": {
+    "target": "https://api.voiapp.io",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/voiapi": ""
+    },
+    "logLevel": "debug"
   }
 }
