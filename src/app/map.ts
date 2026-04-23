@@ -7,7 +7,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'app-map',
   template: `
-    <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="12" [center]="center()">
+    <google-map mapId="scooterMap" height="100%" width="100%" [zoom]="18" [center]="center()">
       <map-marker-clusterer>
         @for (bike of bikes(); track bike.bike_id) {
           <map-marker
