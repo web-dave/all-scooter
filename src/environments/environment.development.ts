@@ -4,4 +4,6 @@ export const environment = {
   dottUrl: 'https://gbfs.api.ridedott.com/public/v2/',
   limeUrl: 'https://all-scooter.webdave.rocks/lime.php',
   limeUsePhpProxy: true,
+  voiUrl: 'https://all-scooter.webdave.rocks/voi.php',
+  voiUsePhpProxy: true,
 };
