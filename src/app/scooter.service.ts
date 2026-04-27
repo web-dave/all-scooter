@@ -1,15 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, signal } from '@angular/core';
-import {
-  catchError,
-  combineLatest,
-  defer,
-  map,
-  Observable,
-  of,
-  Subject,
-  switchMap,
-} from 'rxjs';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { catchError, combineLatest, defer, map, Observable, of, Subject, switchMap } from 'rxjs';
 import { environment } from '../environments/environment';
 
 interface DottAPIDataBike {
@@ -123,9 +114,13 @@ export class BikeService {
   }
 
   getAllBikes(): Observable<Bike[]> {
-    return combineLatest([this.getAllDott(this.city()), this.getAllLime(this.city()), this.getAllVoi()]).pipe(
-      map(([dott, lime, voi]) => [...dott, ...lime, ...voi]),
-    );
+    return combineLatest([
+      this.getAllDott(this.city()),
+      this.getAllLime(this.city()),
+      // this.getAllRyde(),
+      // this.getAllVoi(),
+    ]).pipe(map(([dott, lime]) => [...dott, ...lime]));
+    // ]).pipe(map(([dott, lime, ryde, voi]) => [...dott, ...lime, ...ryde, ...voi]));
   }
 
   getAllDott(city: string): Observable<Bike[]> {
@@ -161,11 +156,9 @@ export class BikeService {
   }
 
   getAllLime(city: string): Observable<Bike[]> {
-    const request = environment.limeUsePhpProxy
-      ? this.http.post<{ data: { bikes: LimeAPIDataBike[] } }>(environment.limeUrl, { city })
-      : this.http.get<{ data: { bikes: LimeAPIDataBike[] } }>(
-          `${environment.limeUrl}${city}/free_bike_status`,
-        );
+    const request = this.http.post<{ data: { bikes: LimeAPIDataBike[] } }>(environment.limeUrl, {
+      city,
+    });
     return request.pipe(
       map((res) => res.data.bikes),
       catchError(() => of([])),
@@ -190,6 +183,23 @@ export class BikeService {
     );
   }
 
+  private getAllRyde() {
+    const center = this.center();
+    return this.http
+      .post(environment.rydeUrl, {
+        iotLa: center.lat,
+        iotLo: center.lng,
+        nearRadius: 1000,
+      })
+      .pipe(catchError(() => of([] as any)));
+    //     POST https://qw-test.ryde.vip/appRyde/getNearScooters
+    // Body:
+    // iotLa: 63.4335711
+    // iotLo: 10.3983865
+    // nearRadius: 10
+    // cityId: 5
+  }
+
   private getAllVoi(): Observable<Bike[]> {
     return this.getVoiAccessToken().pipe(
       switchMap((accessToken) => {
@@ -201,9 +211,9 @@ export class BikeService {
             if (zoneIds.length === 0) {
               return of([]);
             }
-            return combineLatest(zoneIds.map((zoneId) => this.getVoiVehicles(accessToken, zoneId))).pipe(
-              map((zoneVehicles) => zoneVehicles.flat()),
-            );
+            return combineLatest(
+              zoneIds.map((zoneId) => this.getVoiVehicles(accessToken, zoneId)),
+            ).pipe(map((zoneVehicles) => zoneVehicles.flat()));
           }),
         );
       }),
@@ -259,7 +269,9 @@ export class BikeService {
             return of(null);
           }
           return this.verifyVoiOtp(tokenResponse.token, otp).pipe(
-            switchMap((verifyResponse) => this.resolveVoiAuthToken(tokenResponse.token, verifyResponse, email)),
+            switchMap((verifyResponse) =>
+              this.resolveVoiAuthToken(tokenResponse.token, verifyResponse, email),
+            ),
           );
         }),
         switchMap((authenticationToken) => {
@@ -279,22 +291,18 @@ export class BikeService {
   }
 
   private voiPost<T>(path: string, body: object): Observable<T> {
-    if (environment.voiUsePhpProxy) {
-      return this.http.post<T>(environment.voiUrl, { cmd: path, data: body });
-    }
-    return this.http.post<T>(`voiapi/${path}`, body);
+    return this.http.post<T>(environment.voiUrl, { cmd: path, data: body });
   }
 
-  private voiGet<T>(path: string, queryParams: Record<string, string>, accessToken: string): Observable<T> {
-    if (environment.voiUsePhpProxy) {
-      return this.http.post<T>(environment.voiUrl, {
-        cmd: path,
-        data: { ...queryParams, access_token: accessToken },
-      });
-    }
-    const headers = { 'x-access-token': accessToken };
-    const query = new URLSearchParams(queryParams).toString();
-    return this.http.get<T>(`voiapi/${path}?${query}`, { headers });
+  private voiGet<T>(
+    path: string,
+    queryParams: Record<string, string>,
+    accessToken: string,
+  ): Observable<T> {
+    return this.http.post<T>(environment.voiUrl, {
+      cmd: path,
+      data: { ...queryParams, access_token: accessToken },
+    });
   }
 
   private requestVoiOtp(phoneNumber: string): Observable<VoiVerifyPhoneResponse> {
@@ -318,7 +326,8 @@ export class BikeService {
     }
 
     if (verifyResponse.verificationStep === 'emailValidationRequired') {
-      const email = initialEmail ?? this.promptValue('Bitte E-Mail für die Voi Bestätigung eingeben');
+      const email =
+        initialEmail ?? this.promptValue('Bitte E-Mail für die Voi Bestätigung eingeben');
       if (!email) {
         return of(null);
       }
@@ -361,33 +370,43 @@ export class BikeService {
               )
             : zones;
         const zonesToUse = cityZones.length > 0 ? cityZones : zones;
-        return [...new Set(zonesToUse.map((zone) => String(zone.id ?? zone.zone_id ?? '')).filter(Boolean))];
+        return [
+          ...new Set(
+            zonesToUse.map((zone) => String(zone.id ?? zone.zone_id ?? '')).filter(Boolean),
+          ),
+        ];
       }),
     );
   }
 
   private getVoiVehicles(accessToken: string, zoneId: string): Observable<Bike[]> {
-    return this.voiGet<VoiVehiclesResponse>('v2/rides/vehicles', { zone_id: zoneId }, accessToken).pipe(
-        map((response) => response.data?.vehicle_groups ?? []),
-        map((groups) => groups.flatMap((group) => group.vehicles ?? [])),
-        map((vehicles) =>
-          vehicles.map((vehicle) => ({
-            tenant: 'VOI' as const,
-            bike_id: vehicle.id,
-            latLng: {
-              lat: vehicle.location.lat,
-              lng: vehicle.location.lng,
-            },
-            current_range_meters: -1,
-            current_fuel_percent:
-              typeof vehicle.battery === 'number' ? Math.min(Math.max(vehicle.battery, 0), 100) / 100 : -1,
-            is_reserved: false,
-            is_disabled: false,
-            vehicle_type: 'scooter' as const,
-          })),
-        ),
-        catchError(() => of([])),
-      );
+    return this.voiGet<VoiVehiclesResponse>(
+      'v2/rides/vehicles',
+      { zone_id: zoneId },
+      accessToken,
+    ).pipe(
+      map((response) => response.data?.vehicle_groups ?? []),
+      map((groups) => groups.flatMap((group) => group.vehicles ?? [])),
+      map((vehicles) =>
+        vehicles.map((vehicle) => ({
+          tenant: 'VOI' as const,
+          bike_id: vehicle.id,
+          latLng: {
+            lat: vehicle.location.lat,
+            lng: vehicle.location.lng,
+          },
+          current_range_meters: -1,
+          current_fuel_percent:
+            typeof vehicle.battery === 'number'
+              ? Math.min(Math.max(vehicle.battery, 0), 100) / 100
+              : -1,
+          is_reserved: false,
+          is_disabled: false,
+          vehicle_type: 'scooter' as const,
+        })),
+      ),
+      catchError(() => of([])),
+    );
   }
 
   private promptValue(message: string): string | null {

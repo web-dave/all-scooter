@@ -27,7 +27,7 @@ if ($cmd === '') {
 
 // Allowlist: map cmd -> [method, path]
 $routes = [
-    'v1/auth/verify/phone'           => ['POST', '/v1/auth/verify/phone'],
+    'v2/auth/verify/phone'           => ['POST', '/v2/auth/verify/phone'],
     'v2/auth/verify/code'            => ['POST', '/v2/auth/verify/code'],
     'v1/auth/verify/presence'        => ['POST', '/v1/auth/verify/presence'],
     'v3/auth/verify/device/activate' => ['POST', '/v3/auth/verify/device/activate'],
@@ -47,7 +47,9 @@ if (!array_key_exists($cmd, $routes)) {
 $voiBaseUrl = 'https://api.voiapp.io';
 $url = $voiBaseUrl . $path;
 
-$curlHeaders = ['Content-Type: application/json'];
+$curlHeaders = ['Content-Type: application/json','user-agent: okhttp/4.12.0',
+    'x-app-version: 3.231.0',
+    'x-request-id: whatever'];
 
 // Extract access token from data and place it in the request header
 if (isset($data['access_token'])) {
