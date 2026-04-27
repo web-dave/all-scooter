@@ -298,7 +298,7 @@ export class BikeService {
   }
 
   private requestVoiOtp(phoneNumber: string): Observable<VoiVerifyPhoneResponse> {
-    return this.voiPost<VoiVerifyPhoneResponse>('v1/auth/verify/phone', {
+    return this.voiPost<VoiVerifyPhoneResponse>('v2/auth/verify/phone', {
       country_code: 'DE',
       phone_number: phoneNumber,
     });
