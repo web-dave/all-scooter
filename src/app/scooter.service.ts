@@ -161,8 +161,12 @@ export class BikeService {
   }
 
   getAllLime(city: string): Observable<Bike[]> {
-    const url = `${environment.limeUrl}${city}/free_bike_status`;
-    return this.http.get<{ data: { bikes: LimeAPIDataBike[] } }>(url).pipe(
+    const request = environment.limeUsePhpProxy
+      ? this.http.post<{ data: { bikes: LimeAPIDataBike[] } }>(environment.limeUrl, { city })
+      : this.http.get<{ data: { bikes: LimeAPIDataBike[] } }>(
+          `${environment.limeUrl}${city}/free_bike_status`,
+        );
+    return request.pipe(
       map((res) => res.data.bikes),
       catchError(() => of([])),
       map((bikes) =>
