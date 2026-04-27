@@ -278,18 +278,34 @@ export class BikeService {
     });
   }
 
+  private voiPost<T>(path: string, body: object): Observable<T> {
+    if (environment.voiUsePhpProxy) {
+      return this.http.post<T>(environment.voiUrl, { cmd: path, data: body });
+    }
+    return this.http.post<T>(`voiapi/${path}`, body);
+  }
+
+  private voiGet<T>(path: string, queryParams: Record<string, string>, accessToken: string): Observable<T> {
+    if (environment.voiUsePhpProxy) {
+      return this.http.post<T>(environment.voiUrl, {
+        cmd: path,
+        data: { ...queryParams, access_token: accessToken },
+      });
+    }
+    const headers = { 'x-access-token': accessToken };
+    const query = new URLSearchParams(queryParams).toString();
+    return this.http.get<T>(`voiapi/${path}?${query}`, { headers });
+  }
+
   private requestVoiOtp(phoneNumber: string): Observable<VoiVerifyPhoneResponse> {
-    return this.http.post<VoiVerifyPhoneResponse>('voiapi/v1/auth/verify/phone', {
+    return this.voiPost<VoiVerifyPhoneResponse>('v1/auth/verify/phone', {
       country_code: 'DE',
       phone_number: phoneNumber,
     });
   }
 
   private verifyVoiOtp(token: string, code: string): Observable<VoiVerifyCodeResponse> {
-    return this.http.post<VoiVerifyCodeResponse>('voiapi/v2/auth/verify/code', {
-      code,
-      token,
-    });
+    return this.voiPost<VoiVerifyCodeResponse>('v2/auth/verify/code', { code, token });
   }
 
   private resolveVoiAuthToken(
@@ -306,37 +322,32 @@ export class BikeService {
       if (!email) {
         return of(null);
       }
-      return this.http
-        .post<VoiAuthTokenResponse>('voiapi/v1/auth/verify/presence', {
-          email,
-          token,
-        })
-        .pipe(map((response) => response.authToken));
+      return this.voiPost<VoiAuthTokenResponse>('v1/auth/verify/presence', { email, token }).pipe(
+        map((response) => response.authToken),
+      );
     }
 
     if (verifyResponse.verificationStep === 'deviceActivationRequired') {
-      return this.http
-        .post<VoiAuthTokenResponse>('voiapi/v3/auth/verify/device/activate', {
-          token,
-          provider: 'sms',
-        })
-        .pipe(map((response) => response.authToken));
+      return this.voiPost<VoiAuthTokenResponse>('v3/auth/verify/device/activate', {
+        token,
+        provider: 'sms',
+      }).pipe(map((response) => response.authToken));
     }
 
     return of(verifyResponse.authToken ?? null);
   }
 
   private openVoiSession(authenticationToken: string): Observable<VoiSessionResponse> {
-    return this.http.post<VoiSessionResponse>('voiapi/v1/auth/session', {
-      authenticationToken,
-    });
+    return this.voiPost<VoiSessionResponse>('v1/auth/session', { authenticationToken });
   }
 
   private getVoiZoneIds(accessToken: string): Observable<string[]> {
-    const headers = { 'x-access-token': accessToken };
     const location = this.center();
-    const query = `?lat=${location.lat}&lng=${location.lng}`;
-    return this.http.get<VoiZonesResponse>(`voiapi/v1/zones${query}`, { headers }).pipe(
+    return this.voiGet<VoiZonesResponse>(
+      'v1/zones',
+      { lat: String(location.lat), lng: String(location.lng) },
+      accessToken,
+    ).pipe(
       map((response) => response.zones ?? response.data?.zones ?? []),
       map((zones) => {
         if (zones.length === 0) {
@@ -356,10 +367,7 @@ export class BikeService {
   }
 
   private getVoiVehicles(accessToken: string, zoneId: string): Observable<Bike[]> {
-    const headers = { 'x-access-token': accessToken };
-    return this.http
-      .get<VoiVehiclesResponse>(`voiapi/v2/rides/vehicles?zone_id=${encodeURIComponent(zoneId)}`, { headers })
-      .pipe(
+    return this.voiGet<VoiVehiclesResponse>('v2/rides/vehicles', { zone_id: zoneId }, accessToken).pipe(
         map((response) => response.data?.vehicle_groups ?? []),
         map((groups) => groups.flatMap((group) => group.vehicles ?? [])),
         map((vehicles) =>
