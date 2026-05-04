@@ -1,0 +1,23 @@
+{
+  "name": "AllScooter",
+  "short_name": "AllScooter",
+  "description": "Find e-scooters near you – Dott, Lime, Voi and more on one map.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d3b8e",
+  "theme_color": "#1e6fd9",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

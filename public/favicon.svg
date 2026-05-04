@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e6fd9"/>
+      <stop offset="100%" stop-color="#0d3b8e"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#bgGrad)"/>
+  <circle cx="158" cy="332" r="54" fill="none" stroke="white" stroke-width="20"/>
+  <circle cx="158" cy="332" r="14" fill="white"/>
+  <circle cx="360" cy="332" r="44" fill="none" stroke="white" stroke-width="18"/>
+  <circle cx="360" cy="332" r="12" fill="white"/>
+  <rect x="148" y="294" width="210" height="22" rx="11" fill="white"/>
+  <line x1="340" y1="304" x2="308" y2="190" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <rect x="274" y="176" width="80" height="18" rx="9" fill="white"/>
+  <rect x="268" y="172" width="18" height="26" rx="9" fill="white"/>
+  <rect x="346" y="172" width="18" height="26" rx="9" fill="white"/>
+  <rect x="303" y="218" width="30" height="48" rx="8" fill="white" opacity="0.85"/>
+  <polygon points="318,228 310,244 318,244 312,260 326,240 317,240" fill="#1e6fd9"/>
+</svg>

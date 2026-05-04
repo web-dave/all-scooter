@@ -28,6 +28,21 @@
   box-shadow: 0 12px 30px rgb(20 33 61 / 0.08);
 }
 
+.menu-bar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.menu-bar__logo {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.4rem;
+}
+
 .menu-bar__title {
   font-size: 1rem;
   font-weight: 700;
