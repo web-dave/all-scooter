@@ -16,7 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
-$data = isset($input['data']) ? $input['data']        : [];
+
+$iotLa = isset($input['iotLa']) ? $input['iotLa']: 63.4335711;
+$iotLo = isset($input['iotLo']) ? $input['iotLo']: 10.3983865;
+$nearRadius = isset($input['nearRadius']) ? $input['nearRadius']: 10;
+$cityId = isset($input['cityId']) ? $input['cityId']: 5;
+
+$data = [
+    'iotLa' => $iotLa,
+    'iotLo' => $iotLo,
+    'nearRadius'=> $nearRadius,
+    'cityId' => $cityId
+];
 
 $url = 'https://qw-test.ryde.vip/appRyde/getNearScooters';
 
@@ -25,7 +36,8 @@ curl_setopt($ch, CURLOPT_URL, $url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+// curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
 
 $response  = curl_exec($ch);
