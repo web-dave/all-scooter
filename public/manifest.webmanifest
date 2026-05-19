@@ -1,0 +1,31 @@
+{
+  "name": "all-scooter",
+  "short_name": "all-scooter",
+  "display": "standalone",
+  "scope": "./",
+  "start_url": "./",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "wide-l.png",
+      "sizes": "1181x822",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Map with scooter location pins"
+    },
+    {
+      "src": "narrow.png",
+      "sizes": "397x878",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Map with scooter location pins"
+    }
+  ]
+}
